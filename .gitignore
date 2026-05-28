@@ -1,0 +1,23 @@
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Credenciais
+.env
+*.env
+credentials.json
+service-account*.json
+
+# Uploads gerados em runtime
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

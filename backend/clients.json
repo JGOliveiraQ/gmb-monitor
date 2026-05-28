@@ -1,0 +1,151 @@
+{
+  "clients": [
+    {
+      "id": "gcbs",
+      "name": "GCBS (Conta Principal)",
+      "accountId": "accounts/115836314928738093876",
+      "locationId": "",
+      "clientId": "253783325579-7vsnrsjr212p32unhh61eahosqn6pao5.apps.googleusercontent.com",
+      "clientSecret": "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",
+      "redirectUri": "http://localhost:3000/auth/callback",
+      "tokens": {
+        "access_token": "ya29.a0AQvPyINJ3TRjd6-pyn1_STQhcT7zoc1gY8ElJLBXUjwJ0pr-Dzr4XbusgKmwn8Dagbkd3TG2Bi0zIVh-uHIPczSZU1sVdkRDhqAIUoE5vQpbfA9JvOcy69ytlrq-e2h6QMmm_tpMkXjBO575_FmsoaVYyl6JeFsmir8jk7sfRaothinxJ9o93yq0Pr9ZzAIGDbbmsiYaCgYKAToSARMSFQHGX2Mi0Jk-DUM7g8ILlSuUi9uEqQ0206",
+        "refresh_token": "1//0hZV8NgZRkCVmCgYIARAAGBESNwF-L9IrhoAuKcU4PdIcd2a-DFrfOFRT6hXxVQL7kivS-BQGPPxl8GHTmY38FFShlOIWoM-3Bfk",
+        "scope": "https://www.googleapis.com/auth/business.manage",
+        "token_type": "Bearer",
+        "expiry_date": 1779455026056
+      },
+      "active": true,
+      "notes": "Conta mestre GCBS — contém os tokens OAuth. Não usar diretamente para avaliações."
+    },
+    {
+      "id": "ddtiza",
+      "name": "DDTIZA Controle de Pragas Urbanas",
+      "accountId": "accounts/115836314928738093876",
+      "locationId": "accounts/115836314928738093876/locations/5603976178896385086",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": ""
+    },
+    {
+      "id": "dr-othavio",
+      "name": "Doutor Othavio Lopes - Neurocirurgião",
+      "accountId": "accounts/115836314928738093876",
+      "locationId": "accounts/115836314928738093876/locations/2523512215203333948",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": ""
+    },
+    {
+      "id": "via-das-flores",
+      "name": "Floricultura Via das Flores",
+      "accountId": "accounts/115836314928738093876",
+      "locationId": "accounts/115836314928738093876/locations/10797451410129794296",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": ""
+    },
+    {
+      "id": "dr-igor",
+      "name": "Doutor Igor Pedrinha - Ortopedista Joelho",
+      "accountId": "accounts/115836314928738093876",
+      "locationId": "accounts/115836314928738093876/locations/3690519836965590383",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": ""
+    },
+    {
+      "id": "clinica-pe-wagner",
+      "name": "Clínica do Pé Dr Wagner Vieira",
+      "accountId": "accounts/115836314928738093876",
+      "locationId": "accounts/115836314928738093876/locations/5784441096826971808",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": ""
+    },
+    {
+      "id": "orthocrin",
+      "name": "Loja Especializada Orthocrin | Cidade Jardim",
+      "accountId": "accounts/115836314928738093876",
+      "locationId": "accounts/115836314928738093876/locations/2646251045714783592",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": ""
+    },
+    {
+      "id": "dr-gil-galvao",
+      "name": "Dr. Gil Galvão - Cirurgia Pé e Tornozelo",
+      "accountId": "accounts/115836314928738093876",
+      "locationId": "accounts/115836314928738093876/locations/12330690576266318723",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": ""
+    },
+    {
+      "id": "dr-jacques",
+      "name": "Dr. Jacques Houly - Oftalmologista",
+      "accountId": "accounts/115836314928738093876",
+      "locationId": "accounts/115836314928738093876/locations/10445479506778978822",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": ""
+    },
+    {
+      "id": "ferramenta-gcbs",
+      "name": "GCBS Ferramenta (Conta Secundária)",
+      "accountId": "",
+      "locationId": "",
+      "clientId": "253783325579-7vsnrsjr212p32unhh61eahosqn6pao5.apps.googleusercontent.com",
+      "clientSecret": "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",
+      "redirectUri": "http://localhost:3000/auth/callback",
+      "tokens": null,
+      "active": true,
+      "notes": "Conta ferramentaguicbs@gmail.com — proprietário principal dos novos clientes"
+    },
+    {
+      "id": "preall",
+      "name": "PREALL Design Cimentícios",
+      "accountId": "locations/4227115351135818477",
+      "locationId": "locations/4227115351135818477",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": "Perfil sob conta própria; usa curinga accounts/- na API v4"
+    },
+    {
+      "id": "dr-pedro",
+      "name": "Dr. Pedro De Oliveira Frade Carneiro",
+      "accountId": "locations/14524804382229483023",
+      "locationId": "locations/14524804382229483023",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": "Perfil sob conta própria; usa curinga accounts/- na API v4"
+    },
+    {
+      "id": "dr-diego",
+      "name": "Dr. Diego Rezende Martins, Cirurgião da mão",
+      "accountId": "locations/9194534297844819036",
+      "locationId": "locations/9194534297844819036",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": "Perfil sob conta própria; usa curinga accounts/- na API v4"
+    },
+    {
+      "id": "previct",
+      "name": "PREVICT Churrasqueiras Pré-Moldadas",
+      "accountId": "locations/9982361578671841437",
+      "locationId": "locations/9982361578671841437",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": "Perfil sob conta própria; usa curinga accounts/- na API v4"
+    },
+    {
+      "id": "dr-raphael",
+      "name": "Doutor Raphael Fonseca - Ortopedista Ombro e Cotovelo",
+      "accountId": "locations/3651594922845107879",
+      "locationId": "locations/3651594922845107879",
+      "parentId": "gcbs",
+      "active": true,
+      "notes": "Perfil sob conta própria; usa curinga accounts/- na API v4"
+    }
+  ]
+}
