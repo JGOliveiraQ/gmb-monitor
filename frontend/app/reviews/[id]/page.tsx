@@ -270,10 +270,12 @@ function ReviewCard({ review, replyOpen, onToggleReply, onDraftChange, onGenerat
           <div className="rc-author">{review.reviewer.displayName}</div>
           <div className="rc-date">{formatDate(review.createTime)}</div>
         </div>
-        {isDone
-          ? <span className="replied-badge">✅ Respondido</span>
-          : <span style={{ color: rating >= 4 ? "var(--green)" : rating <= 2 ? "var(--red)" : "var(--p1)", fontSize: "16px" }}>{starsStr}</span>
-        }
+        <div style={{ textAlign: "right" }}>
+          <span style={{ color: rating >= 4 ? "var(--green)" : rating <= 2 ? "var(--red)" : "var(--p1)", fontSize: "16px", display: "block" }}>
+            {starsStr}
+          </span>
+          {isDone && <span className="replied-badge" style={{ marginTop: "4px", display: "inline-block" }}>✅ Respondido</span>}
+        </div>
       </div>
 
       {!isDone && (
