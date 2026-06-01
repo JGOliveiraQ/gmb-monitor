@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 type Mode = "posts" | "reviews";
 
@@ -26,14 +26,35 @@ interface ClientCoverage {
   totalWeeks: number;
 }
 
+interface AutoReplyClientResult {
+  clientId: string;
+  clientName: string;
+  status: "ok" | "no_auth" | "fetch_error" | "error";
+  total?: number;
+  replied?: number;
+  failed?: number;
+  skipped?: number;
+  error?: string;
+}
+
+interface AutoReplyResult {
+  success: boolean;
+  totalReplied: number;
+  totalFailed: number;
+  results: AutoReplyClientResult[];
+}
+
 export default function Home() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("posts");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [coverage, setCoverage] = useState<ClientCoverage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [autoReplying, setAutoReplying] = useState(false);
+  const [autoResult, setAutoResult]     = useState<AutoReplyResult | null>(null);
 
-  useEffect(() => {
+  const refreshData = useCallback(() => {
+    setLoading(true);
     Promise.allSettled([
       fetch("http://localhost:3000/accounts-summary").then((r) => r.json()),
       fetch("http://localhost:3000/posts-coverage").then((r) => r.json()),
@@ -47,6 +68,24 @@ export default function Home() {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => { refreshData(); }, [refreshData]);
+
+  const handleAutoReplyAll = useCallback(async () => {
+    setAutoReplying(true);
+    setAutoResult(null);
+    try {
+      const res  = await fetch("http://localhost:3000/auto-reply-all", { method: "POST" });
+      const data: AutoReplyResult = await res.json();
+      setAutoResult(data);
+      // Atualiza contadores de pendentes
+      refreshData();
+    } catch {
+      setAutoResult({ success: false, totalReplied: 0, totalFailed: 0, results: [] });
+    } finally {
+      setAutoReplying(false);
+    }
+  }, [refreshData]);
 
   function getCoverage(clientId: string): ClientCoverage | undefined {
     return coverage.find((c) => c.clientId === clientId);
@@ -101,6 +140,30 @@ export default function Home() {
         </button>
       </div>
 
+      {/* Barra de auto-resposta — só no modo avaliações com pendentes */}
+      {mode === "reviews" && !loading && totalPending > 0 && (
+        <div className="auto-reply-bar">
+          <div className="arb-info">
+            <span className="arb-icon">⚡</span>
+            <div>
+              <div className="arb-title">
+                {totalPending} avaliação{totalPending !== 1 ? "ões" : ""} aguardando resposta
+              </div>
+              <div className="arb-desc">Responda todas automaticamente com um clique</div>
+            </div>
+          </div>
+          <button
+            className="btn-auto-reply"
+            onClick={handleAutoReplyAll}
+            disabled={autoReplying}
+          >
+            {autoReplying
+              ? <><span className="spinner sm" style={{ display: "inline-block" }} />Respondendo…</>
+              : "⚡ Responder tudo"}
+          </button>
+        </div>
+      )}
+
       <div className="section-label" style={{ marginBottom: "14px" }}>
         {mode === "posts" ? "Selecione o cliente para gerenciar posts" : "Selecione o cliente para responder avaliações"}
       </div>
@@ -131,6 +194,53 @@ export default function Home() {
               onClick={() => openClient(acc.clientId)}
             />
           ))}
+        </div>
+      )}
+      {/* Modal de resultado */}
+      {autoResult && (
+        <div className="modal-overlay" onClick={() => setAutoResult(null)}>
+          <div className="modal-box auto-result-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setAutoResult(null)}>×</button>
+
+            <div className="ar-modal-header">
+              <div className="ar-modal-icon">
+                {autoResult.totalFailed === 0 ? "✅" : autoResult.totalReplied > 0 ? "⚠️" : "❌"}
+              </div>
+              <div>
+                <div className="ar-modal-title">Auto-resposta concluída</div>
+                <div className="ar-modal-sub">
+                  <strong style={{ color: "var(--green)" }}>{autoResult.totalReplied} respondida{autoResult.totalReplied !== 1 ? "s" : ""}</strong>
+                  {autoResult.totalFailed > 0 && (
+                    <> · <strong style={{ color: "var(--red)" }}>{autoResult.totalFailed} falha{autoResult.totalFailed !== 1 ? "s" : ""}</strong></>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="ar-results-list">
+              {autoResult.results.map((r) => (
+                <div key={r.clientId} className={`ar-result-row ${r.status !== "ok" ? "muted" : ""}`}>
+                  <span className="ar-row-name">{r.clientName}</span>
+                  <span className="ar-row-stats">
+                    {r.status === "no_auth"    && <span className="ar-badge warn">Sem auth</span>}
+                    {r.status === "fetch_error" && <span className="ar-badge warn">Erro API</span>}
+                    {r.status === "error"       && <span className="ar-badge fail">Erro</span>}
+                    {r.status === "ok" && r.total === 0 && <span className="ar-badge ok">Em dia ✓</span>}
+                    {r.status === "ok" && (r.total ?? 0) > 0 && (
+                      <>
+                        {(r.replied ?? 0) > 0 && <span className="ar-badge ok">{r.replied} ok</span>}
+                        {(r.failed  ?? 0) > 0 && <span className="ar-badge fail">{r.failed} falha</span>}
+                      </>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <button className="btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: "20px" }} onClick={() => setAutoResult(null)}>
+              Fechar
+            </button>
+          </div>
         </div>
       )}
     </main>

@@ -803,6 +803,115 @@ app.get("/posts-coverage", async (req, res) => {
   res.json({ coverage });
 });
 
+// ─── Auto-resposta: responde TODAS as avaliações pendentes de TODOS os clientes ──
+
+app.post("/auto-reply-all", async (req, res) => {
+  const data = loadClients();
+  const templates = loadTemplates();
+  const locations = data.clients.filter((c) => c.locationId);
+
+  const STAR_MAP = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+
+  let totalReplied = 0;
+  let totalFailed  = 0;
+  const results    = [];
+
+  for (const client of locations) {
+    const hasTokens = resolveTokens(client, data.clients);
+    if (!hasTokens) {
+      results.push({ clientId: client.id, clientName: client.name, status: "no_auth", replied: 0, failed: 0, skipped: 0 });
+      continue;
+    }
+
+    // ── Busca avaliações do cliente ──────────────────────────────────────────
+    let reviews = [];
+    let oauth2;
+    try {
+      oauth2 = getOAuthClient(client);
+      const { token } = await oauth2.getAccessToken();
+
+      const locPath = client.locationId.startsWith("locations/")
+        ? `accounts/-/${client.locationId}`
+        : client.locationId;
+
+      const reviewRes = await fetch(
+        `https://mybusiness.googleapis.com/v4/${locPath}/reviews`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!reviewRes.ok) {
+        const errText = await reviewRes.text();
+        console.warn(`[auto-reply] Erro ao buscar reviews de ${client.name}:`, errText);
+        results.push({ clientId: client.id, clientName: client.name, status: "fetch_error", replied: 0, failed: 0, skipped: 0 });
+        continue;
+      }
+
+      const reviewData = await reviewRes.json();
+      reviews = reviewData.reviews || [];
+    } catch (err) {
+      console.error(`[auto-reply] Exceção ao buscar reviews de ${client.name}:`, err.message);
+      results.push({ clientId: client.id, clientName: client.name, status: "error", error: err.message, replied: 0, failed: 0, skipped: 0 });
+      continue;
+    }
+
+    const pending = reviews.filter((r) => !r.reviewReply);
+    let replied = 0, failed = 0, skipped = 0;
+
+    // ── Responde cada avaliação pendente ─────────────────────────────────────
+    for (const review of pending) {
+      const rating = STAR_MAP[review.starRating] ?? 3;
+      const bucket = templates[String(rating)];
+      if (!bucket || bucket.length === 0) { skipped++; continue; }
+
+      const name      = (review.reviewer?.displayName || "cliente").trim();
+      const replyText = pickRandom(bucket).replace(/\{name\}/g, name);
+
+      try {
+        const { token } = await oauth2.getAccessToken();
+
+        // Monta o caminho correto para PUT /reply
+        const reviewPath = review.name.startsWith("locations/")
+          ? `accounts/-/${review.name}`
+          : review.name;
+
+        const apiUrl  = `https://mybusiness.googleapis.com/v4/${reviewPath}/reply`;
+        const apiRes  = await fetch(apiUrl, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ comment: replyText }),
+        });
+
+        if (apiRes.ok) {
+          replied++;
+          totalReplied++;
+          console.log(`[auto-reply] ✅ ${client.name} — ${name}`);
+        } else {
+          const errText = await apiRes.text();
+          console.warn(`[auto-reply] ❌ ${client.name} — ${name}:`, errText);
+          failed++;
+          totalFailed++;
+        }
+      } catch (err) {
+        console.error(`[auto-reply] Exceção ao responder ${name}:`, err.message);
+        failed++;
+        totalFailed++;
+      }
+    }
+
+    results.push({
+      clientId:   client.id,
+      clientName: client.name,
+      status:     "ok",
+      total:      pending.length,
+      replied,
+      failed,
+      skipped,
+    });
+  }
+
+  res.json({ success: true, totalReplied, totalFailed, results });
+});
+
 // ─── Servidor ────────────────────────────────────────────────────────────────
 
 app.listen(3000, () => {
