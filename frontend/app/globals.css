@@ -756,6 +756,42 @@ main { padding: calc(var(--nav-h) + 32px) 24px 56px; max-width: 1080px; margin: 
 }
 [data-theme="light"] .ar-results-list { background: rgba(0,0,0,0.02); }
 
+/* ── Filtro de estrelas ──────────────────────────────────────────────────────── */
+.star-filter-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.star-filter-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--muted); border-radius: 20px;
+  padding: 7px 14px; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.star-filter-btn:hover:not(:disabled) { border-color: rgba(139,92,246,0.4); color: var(--text); }
+.star-filter-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.star-filter-btn.active {
+  background: rgba(139,92,246,0.15);
+  border-color: rgba(139,92,246,0.5);
+  color: #c4b5fd;
+}
+/* Cores por nota */
+.star-filter-btn.star-5.active { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.4); color: #34d399; }
+.star-filter-btn.star-4.active { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.3); color: #6ee7b7; }
+.star-filter-btn.star-3.active { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.4); color: #fbbf24; }
+.star-filter-btn.star-2.active { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.3);  color: #fca5a5; }
+.star-filter-btn.star-1.active { background: rgba(239,68,68,0.15);  border-color: rgba(239,68,68,0.5);  color: #f87171; }
+
+.sfb-count {
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 1px 7px;
+  font-size: 11px; font-weight: 700;
+}
+.star-filter-btn.active .sfb-count { background: rgba(255,255,255,0.15); }
+
+[data-theme="light"] .star-filter-btn { background: #fff; color: #64748b; }
+[data-theme="light"] .sfb-count { background: rgba(0,0,0,0.06); }
+
 @media (max-width: 600px) {
   main { padding: calc(var(--nav-h) + 20px) 14px 36px; }
   .cc-count { font-size: 22px; }
@@ -764,4 +800,6 @@ main { padding: calc(var(--nav-h) + 32px) 24px 56px; max-width: 1080px; margin: 
   .post-thumb { width: 80px; }
   .auto-reply-bar { flex-direction: column; align-items: flex-start; }
   .btn-auto-reply { width: 100%; justify-content: center; }
+  .star-filter-bar { gap: 6px; }
+  .star-filter-btn { padding: 6px 10px; font-size: 12px; }
 }

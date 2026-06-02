@@ -560,11 +560,12 @@ function PostsTab({ clientId, onToast }: { clientId: string; onToast: (msg: stri
 // ─── Aba: Avaliações ──────────────────────────────────────────────────────────
 
 function ReviewsTab({ clientId, onToast }: { clientId: string; onToast: (msg: string, type: "success" | "error") => void }) {
-  const [reviews,      setReviews]      = useState<Review[]>([]);
-  const [loading,      setLoading]      = useState(true);
+  const [reviews,       setReviews]      = useState<Review[]>([]);
+  const [loading,       setLoading]      = useState(true);
   const [confirmTarget, setConfirmTarget] = useState<Review | null>(null);
-  const [publishing,   setPublishing]   = useState(false);
-  const [openReplies,  setOpenReplies]  = useState<Set<string>>(new Set());
+  const [publishing,    setPublishing]   = useState(false);
+  const [openReplies,   setOpenReplies]  = useState<Set<string>>(new Set());
+  const [starFilter,    setStarFilter]   = useState<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -621,12 +622,41 @@ function ReviewsTab({ clientId, onToast }: { clientId: string; onToast: (msg: st
     }
   }
 
-  const pending = reviews.filter((r) => !r.published && !r.replied);
-  const done    = reviews.filter((r) => r.published || r.replied);
+  // Contagem por estrela (sobre todas as avaliações, sem filtro)
+  const countByStar = (n: number) => reviews.filter((r) => (STAR_MAP[r.starRating] ?? 0) === n).length;
+
+  // Aplica filtro de estrelas
+  const visible = starFilter ? reviews.filter((r) => (STAR_MAP[r.starRating] ?? 0) === starFilter) : reviews;
+  const pending  = visible.filter((r) => !r.published && !r.replied);
+  const done     = visible.filter((r) => r.published || r.replied);
 
   return (
     <>
       {loading && <div className="loading"><div className="spinner" /><p>Buscando avaliações…</p></div>}
+
+      {/* Filtro por estrelas */}
+      {!loading && reviews.length > 0 && (
+        <div className="star-filter-bar">
+          <button
+            className={`star-filter-btn ${starFilter === null ? "active" : ""}`}
+            onClick={() => setStarFilter(null)}
+          >
+            Todas
+            <span className="sfb-count">{reviews.length}</span>
+          </button>
+          {[5, 4, 3, 2, 1].map((n) => (
+            <button
+              key={n}
+              className={`star-filter-btn ${starFilter === n ? "active" : ""} star-${n}`}
+              onClick={() => setStarFilter(starFilter === n ? null : n)}
+              disabled={countByStar(n) === 0}
+            >
+              {"★".repeat(n)}
+              <span className="sfb-count">{countByStar(n)}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {!loading && pending.length > 0 && (
         <section style={{ marginBottom: "32px" }}>
@@ -658,6 +688,14 @@ function ReviewsTab({ clientId, onToast }: { clientId: string; onToast: (msg: st
             ))}
           </div>
         </section>
+      )}
+
+      {!loading && visible.length === 0 && reviews.length > 0 && (
+        <div className="empty-state">
+          <div className="empty-icon">{"★".repeat(starFilter ?? 0)}</div>
+          <h3>Nenhuma avaliação com {starFilter} estrela{starFilter !== 1 ? "s" : ""}</h3>
+          <p>Selecione outro filtro para ver outras avaliações.</p>
+        </div>
       )}
 
       {!loading && reviews.length === 0 && (
