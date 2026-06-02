@@ -2,11 +2,19 @@
 /**
  * create-posts.js
  * Cria 3 posts agendados (15, 22 e 29/06/2026 às 10h BRT) para cada cliente ativo.
- * Fotos usam URL pública do LoremFlickr (o Google busca direto, sem download local).
+ * Fotos buscadas via Pexels API (gratuita) — relevância 100% garantida.
  *
- * Execute com o backend rodando:
- *   node scripts/create-posts.js
+ * Pré-requisito: PEXELS_API_KEY no arquivo .env do backend.
+ * Execute com o backend rodando: node scripts/create-posts.js
  */
+require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
+
+const PEXELS_KEY = process.env.PEXELS_API_KEY;
+if (!PEXELS_KEY) {
+  console.error("❌ PEXELS_API_KEY não encontrada no .env");
+  console.error("   Crie uma chave gratuita em: https://www.pexels.com/api/");
+  process.exit(1);
+}
 
 // ── Datas agendadas (10h BRT = 13h UTC) ─────────────────────────────────────
 const DATES = [
@@ -19,7 +27,7 @@ const DATES = [
 const CLIENTS = [
   {
     id: "ddtiza",
-    imageQuery: "exterminator,pest",
+    imageQuery: "pest control exterminator",
     posts: [
       `Sua casa e seu negócio merecem proteção de verdade.\n\nA DDTIZA Controle de Pragas Urbanas atua com técnicas eficazes, produtos certificados e equipe especializada para eliminar e prevenir infestações de forma segura e definitiva.\n\nAgende sua visita e proteja o que é seu.`,
       `Baratas, ratos, cupins ou mosquitos? Não deixe que pragas coloquem em risco a saúde da sua família ou a reputação do seu estabelecimento.\n\nA DDTIZA oferece atendimento emergencial, laudos e contratos de manutenção preventiva para manter seu ambiente sempre protegido.\n\nFale conosco agora.`,
@@ -28,7 +36,7 @@ const CLIENTS = [
   },
   {
     id: "dr-othavio",
-    imageQuery: "neurosurgery,spine,doctor",
+    imageQuery: "neurosurgery spine doctor",
     posts: [
       `Dores de cabeça persistentes, formigamento ou problemas na coluna merecem atenção especializada.\n\nO Dr. Othavio Lopes é neurocirurgião com ampla experiência no diagnóstico e tratamento de doenças neurológicas e da coluna vertebral, unindo precisão técnica e cuidado humanizado.\n\nAgende sua consulta.`,
       `A coluna vertebral é o eixo da sua saúde e da sua qualidade de vida.\n\nCom o Dr. Othavio Lopes — Neurocirurgião —, você tem acesso a diagnóstico preciso e às melhores opções de tratamento, sejam conservadoras ou cirúrgicas.\n\nCuide da sua saúde com quem tem o conhecimento que você merece.`,
@@ -37,7 +45,7 @@ const CLIENTS = [
   },
   {
     id: "via-das-flores",
-    imageQuery: "flowers,bouquet,arrangement",
+    imageQuery: "flower bouquet arrangement",
     posts: [
       `Uma flor tem o poder de transformar qualquer momento em algo especial.\n\nA Floricultura Via das Flores oferece arranjos, buquês e composições florais para todas as ocasiões — aniversários, casamentos, eventos ou simplesmente para alegrar o dia de quem você ama.\n\nEncomende o seu arranjo!`,
       `Presenteie com beleza e afeto.\n\nNa Via das Flores você encontra orquídeas, rosas, girassóis e muito mais, com arranjos personalizados feitos com carinho. Entrega disponível.\n\nEntre em contato e surpreenda quem é especial para você.`,
@@ -46,7 +54,7 @@ const CLIENTS = [
   },
   {
     id: "dr-igor",
-    imageQuery: "knee,orthopedic,rehabilitation",
+    imageQuery: "knee orthopedic surgery rehabilitation",
     posts: [
       `Dores no joelho limitam cada passo da sua rotina e impedem você de viver plenamente.\n\nO Dr. Igor Pedrinha é ortopedista especializado em joelho, com diagnóstico preciso e tratamentos modernos — do conservador ao cirúrgico — para devolver seus movimentos com segurança.\n\nAgende sua consulta.`,
       `Lesão no ligamento, menisco ou artrose no joelho?\n\nCom o Dr. Igor Pedrinha você tem acesso a protocolos personalizados e às técnicas mais avançadas da ortopedia do joelho, garantindo o melhor resultado para o seu caso.\n\nCuide da sua mobilidade. Marque sua avaliação.`,
@@ -55,7 +63,7 @@ const CLIENTS = [
   },
   {
     id: "clinica-pe-wagner",
-    imageQuery: "foot,podiatry,medical",
+    imageQuery: "foot podiatry medical clinic",
     posts: [
       `Seus pés sustentam tudo. Eles merecem o melhor cuidado.\n\nA Clínica do Pé Dr. Wagner Vieira oferece atendimento especializado para joanetes, esporão, fascite plantar, unhas encravadas e muito mais — com diagnóstico preciso e tratamento eficaz.\n\nAgende sua consulta e volte a caminhar sem dor.`,
       `Dores nos pés afetam cada passo da sua rotina e comprometem sua qualidade de vida.\n\nCom o Dr. Wagner Vieira, especialista em pé, você recebe avaliação completa e o tratamento mais indicado para o seu caso — clínico ou cirúrgico.\n\nEntre em contato e cuide da sua saúde.`,
@@ -64,7 +72,7 @@ const CLIENTS = [
   },
   {
     id: "orthocrin",
-    imageQuery: "orthopedic,medical,products",
+    imageQuery: "orthopedic medical products store",
     posts: [
       `Conforto, suporte e qualidade de vida começam com o produto certo.\n\nA Orthocrin Cidade Jardim oferece um amplo catálogo de produtos ortopédicos — palmilhas, imobilizadores, meias de compressão, bengalas e muito mais — com atendimento especializado.\n\nVenha nos visitar!`,
       `Seja para recuperação pós-cirúrgica, prevenção de lesões ou mais conforto no dia a dia, a Orthocrin tem exatamente o que você precisa.\n\nProdutos de qualidade, marcas reconhecidas e equipe dedicada para orientar cada escolha.\n\nConheça nossa loja em Cidade Jardim.`,
@@ -73,7 +81,7 @@ const CLIENTS = [
   },
   {
     id: "dr-gil-galvao",
-    imageQuery: "ankle,foot,surgery,orthopedic",
+    imageQuery: "ankle foot surgery orthopedic",
     posts: [
       `Problemas no pé ou tornozelo afetam cada movimento do seu dia.\n\nO Dr. Gil Galvão é especialista em cirurgia do pé e tornozelo, com experiência no tratamento de joanetes, instabilidade, fraturas e deformidades — utilizando as técnicas mais modernas e seguras.\n\nAgende sua avaliação.`,
       `Do diagnóstico ao tratamento, o Dr. Gil Galvão oferece cuidado completo e individualizado para quem sofre com dores ou limitações no pé e tornozelo.\n\nRecupere sua mobilidade com quem combina experiência e dedicação ao paciente.\n\nMarque sua consulta.`,
@@ -82,7 +90,7 @@ const CLIENTS = [
   },
   {
     id: "dr-jacques",
-    imageQuery: "ophthalmology,eye,doctor",
+    imageQuery: "ophthalmology eye doctor examination",
     posts: [
       `Sua visão é uma das suas maiores riquezas. Cuide dela com quem realmente entende.\n\nO Dr. Jacques Houly é oftalmologista especializado no diagnóstico e tratamento de catarata, glaucoma, miopia, astigmatismo e doenças da retina, com tecnologia de ponta e cuidado humanizado.\n\nAgende sua consulta.`,
       `Consultas de rotina, exames completos ou tratamento especializado — o Dr. Jacques Houly oferece atendimento oftalmológico de excelência para cuidar da sua visão em todas as fases da vida.\n\nNão espere os sintomas aparecerem. Cuide dos seus olhos preventivamente.\n\nMarque sua avaliação.`,
@@ -91,7 +99,7 @@ const CLIENTS = [
   },
   {
     id: "preall",
-    imageQuery: "concrete,design,architecture",
+    imageQuery: "concrete design architecture interior",
     posts: [
       `Elegância e resistência em cada detalhe.\n\nA PREALL Design Cimentícios oferece peças exclusivas em cimento para sua obra ou reforma — pias, banheiras, cubas e revestimentos que unem funcionalidade e estética única.\n\nTransforme seu ambiente com design que dura. Solicite um orçamento!`,
       `O cimento se reinventou — e a PREALL está na vanguarda desse movimento.\n\nPeças artesanais de alto padrão para banheiros, cozinhas, áreas externas e projetos comerciais, com acabamento sofisticado e personalização total.\n\nConheça nosso portfólio e descubra o que é possível criar.`,
@@ -100,7 +108,7 @@ const CLIENTS = [
   },
   {
     id: "dr-pedro",
-    imageQuery: "urology,kidney,doctor,medical",
+    imageQuery: "urology kidney medical doctor",
     posts: [
       `A saúde urológica impacta diretamente sua qualidade de vida — e merece atenção especializada.\n\nO Dr. Pedro Carneiro é urologista dedicado ao diagnóstico e tratamento de cálculos renais, infecções urinárias, hiperplasia prostática, incontinência e muito mais.\n\nAgende sua consulta e cuide da sua saúde com quem entende.`,
       `Não ignore os sinais que seu corpo dá.\n\nDificuldades urinárias, dores lombares e alterações na função renal precisam de avaliação especializada. O Dr. Pedro Carneiro oferece atendimento urológico completo e humanizado, com foco no diagnóstico preciso e no melhor tratamento.\n\nMarque sua consulta.`,
@@ -109,7 +117,7 @@ const CLIENTS = [
   },
   {
     id: "dr-diego",
-    imageQuery: "hand,surgery,microsurgery",
+    imageQuery: "hand surgery microsurgery medical",
     posts: [
       `Suas mãos fazem tudo. Quando algo não está certo, você precisa de um especialista de confiança.\n\nO Dr. Diego Rezende Martins é cirurgião especializado em mão, atuando no tratamento de síndrome do túnel do carpo, lesões de tendão, fraturas, deformidades e outras condições.\n\nAgende sua consulta e recupere a função das suas mãos.`,
       `Dores, formigamento ou limitação nos dedos e punho? Esses sinais merecem avaliação especializada.\n\nO Dr. Diego Rezende Martins — Cirurgião da Mão — oferece diagnóstico preciso e tratamentos modernos, com o objetivo de restabelecer plenamente os movimentos e a qualidade de vida.\n\nMarque sua consulta.`,
@@ -118,7 +126,7 @@ const CLIENTS = [
   },
   {
     id: "previct",
-    imageQuery: "barbecue,grill,outdoor,leisure",
+    imageQuery: "barbecue grill outdoor leisure backyard",
     posts: [
       `Transforme sua área de lazer em um espaço ainda mais completo para reunir família e amigos.\n\nA PREVICT Churrasqueiras Pré-Moldadas oferece soluções que unem qualidade, resistência e praticidade, com modelos pensados para valorizar seu ambiente e proporcionar momentos especiais.\n\nEntre em contato e encontre a churrasqueira ideal para o seu espaço.`,
       `Uma boa churrasqueira é o coração de toda área de lazer.\n\nA PREVICT oferece churrasqueiras pré-moldadas de alta qualidade, com instalação rápida, acabamento impecável e durabilidade que você pode confiar para reunir as pessoas que mais importam.\n\nConheça nossos modelos e solicite um orçamento.`,
@@ -127,7 +135,7 @@ const CLIENTS = [
   },
   {
     id: "dr-raphael",
-    imageQuery: "shoulder,elbow,orthopedic,rehabilitation",
+    imageQuery: "shoulder elbow orthopedic rehabilitation",
     posts: [
       `Dores no ombro ou cotovelo limitam seus movimentos e afetam sua rotina inteira.\n\nO Dr. Raphael Fonseca é ortopedista especializado em ombro e cotovelo, com diagnóstico preciso e tratamentos eficazes — do conservador ao cirúrgico — para devolver sua liberdade de movimento.\n\nAgende sua consulta.`,
       `Tendinite, lesão no manguito rotador, epicondilite ou instabilidade? Cada condição exige um olhar especializado.\n\nO Dr. Raphael Fonseca combina conhecimento técnico avançado e atendimento humanizado para encontrar o melhor caminho para a sua recuperação.\n\nMarque sua avaliação.`,
@@ -138,9 +146,28 @@ const CLIENTS = [
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Retorna a URL pública do LoremFlickr para usar como sourceUrl no GMB. */
-function photoUrl(query, lock = 1) {
-  return `https://loremflickr.com/800/600/${encodeURIComponent(query)}?lock=${lock}`;
+// Cache para não repetir a mesma busca várias vezes
+const _pexelsCache = {};
+
+/**
+ * Busca até 3 fotos na Pexels pelo query e retorna array de URLs (src.large).
+ * Resultados são cacheados por query para economizar chamadas de API.
+ */
+async function fetchPexelsPhotos(query) {
+  if (_pexelsCache[query]) return _pexelsCache[query];
+
+  const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape&locale=pt-BR`;
+  const res = await fetch(url, { headers: { Authorization: PEXELS_KEY } });
+
+  if (!res.ok) throw new Error(`Pexels API ${res.status}: ${await res.text()}`);
+
+  const data  = await res.json();
+  const urls  = (data.photos || []).map((p) => p.src.large);
+
+  if (urls.length === 0) throw new Error(`Nenhuma foto encontrada para "${query}"`);
+
+  _pexelsCache[query] = urls;
+  return urls;
 }
 
 /** POST para o backend com photoUrl (sem download de arquivo). */
@@ -174,14 +201,25 @@ async function main() {
   for (const client of CLIENTS) {
     console.log(`\n📋 ${client.id.toUpperCase()}`);
 
+    // Busca 3 fotos na Pexels (uma por data — variedade real)
+    let photos = [];
+    try {
+      process.stdout.write(`  🔍 buscando fotos Pexels "${client.imageQuery}"… `);
+      photos = await fetchPexelsPhotos(client.imageQuery);
+      console.log(`${photos.length} foto(s) encontrada(s)`);
+    } catch (err) {
+      console.log(`⚠️  ${err.message} — posts sem foto`);
+    }
+
     for (let i = 0; i < DATES.length; i++) {
       const dateLabel = new Date(DATES[i]).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-      const imgUrl    = photoUrl(client.imageQuery, i + 1);
+      // Usa foto diferente para cada data (rotação circular caso tenha menos de 3)
+      const imgUrl = photos.length > 0 ? photos[i % photos.length] : null;
 
       process.stdout.write(`  [${dateLabel}] `);
       try {
         await createPost(client.id, client.posts[i], imgUrl, DATES[i]);
-        console.log(`✅ agendado`);
+        console.log(`✅ agendado${imgUrl ? " 📸" : ""}`);
         success++;
       } catch (err) {
         console.log(`❌ ${err.message}`);
