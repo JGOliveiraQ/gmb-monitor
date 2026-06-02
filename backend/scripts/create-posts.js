@@ -2,14 +2,11 @@
 /**
  * create-posts.js
  * Cria 3 posts agendados (15, 22 e 29/06/2026 às 10h BRT) para cada cliente ativo.
+ * Fotos usam URL pública do LoremFlickr (o Google busca direto, sem download local).
  *
  * Execute com o backend rodando:
  *   node scripts/create-posts.js
  */
-
-const https = require("https");
-const http  = require("http");
-const { Blob } = require("buffer");
 
 // ── Datas agendadas (10h BRT = 13h UTC) ─────────────────────────────────────
 const DATES = [
@@ -141,50 +138,19 @@ const CLIENTS = [
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Baixa imagem seguindo redirects. Retorna { buffer, type }. */
-function downloadImage(query, lock = 1) {
-  const url = `https://loremflickr.com/800/600/${encodeURIComponent(query)}?lock=${lock}`;
-  return new Promise((resolve, reject) => {
-    function get(url, hops = 0) {
-      if (hops > 8) return reject(new Error("Too many redirects"));
-      const client = url.startsWith("https") ? https : http;
-      const req = client.get(url, { headers: { "User-Agent": "Mozilla/5.0" } }, (res) => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          const next = res.headers.location.startsWith("http")
-            ? res.headers.location
-            : new URL(res.headers.location, url).href;
-          res.resume();
-          return get(next, hops + 1);
-        }
-        if (res.statusCode !== 200) {
-          res.resume();
-          return reject(new Error(`HTTP ${res.statusCode} para ${url}`));
-        }
-        const chunks = [];
-        res.on("data", (c) => chunks.push(c));
-        res.on("end", () =>
-          resolve({ buffer: Buffer.concat(chunks), type: res.headers["content-type"] || "image/jpeg" })
-        );
-        res.on("error", reject);
-      });
-      req.on("error", reject);
-    }
-    get(url);
-  });
+/** Retorna a URL pública do LoremFlickr para usar como sourceUrl no GMB. */
+function photoUrl(query, lock = 1) {
+  return `https://loremflickr.com/800/600/${encodeURIComponent(query)}?lock=${lock}`;
 }
 
-/** POST multipart para o backend. */
-async function createPost(clientId, description, imageData, scheduledTime) {
+/** POST para o backend com photoUrl (sem download de arquivo). */
+async function createPost(clientId, description, imgUrl, scheduledTime) {
   const formData = new FormData();
   formData.append("description", description);
   formData.append("scheduledTime", scheduledTime);
+  if (imgUrl) formData.append("photoUrl", imgUrl);
 
-  if (imageData) {
-    const blob = new Blob([imageData.buffer], { type: imageData.type });
-    formData.append("photo", blob, "photo.jpg");
-  }
-
-  const res = await fetch(`http://localhost:3000/posts/${clientId}`, {
+  const res  = await fetch(`http://localhost:3000/posts/${clientId}`, {
     method: "POST",
     body: formData,
   });
@@ -210,19 +176,11 @@ async function main() {
 
     for (let i = 0; i < DATES.length; i++) {
       const dateLabel = new Date(DATES[i]).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+      const imgUrl    = photoUrl(client.imageQuery, i + 1);
 
-      // Baixa imagem com lock diferente para cada data (mais variedade)
-      let imageData = null;
+      process.stdout.write(`  [${dateLabel}] `);
       try {
-        process.stdout.write(`  [${dateLabel}] baixando imagem... `);
-        imageData = await downloadImage(client.imageQuery, i + 1);
-        process.stdout.write(`${Math.round(imageData.buffer.length / 1024)}KB ✓  `);
-      } catch (err) {
-        process.stdout.write(`sem imagem (${err.message})  `);
-      }
-
-      try {
-        await createPost(client.id, client.posts[i], imageData, DATES[i]);
+        await createPost(client.id, client.posts[i], imgUrl, DATES[i]);
         console.log(`✅ agendado`);
         success++;
       } catch (err) {
@@ -230,7 +188,7 @@ async function main() {
         failed++;
       }
 
-      await sleep(600); // evita sobrecarregar imagem service
+      await sleep(300);
     }
   }
 

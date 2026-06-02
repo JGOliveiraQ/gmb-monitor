@@ -90,66 +90,17 @@ function locationPath(client) {
     : client.locationId;
 }
 
-async function uploadImageToGMB(client, locPath, fileBuffer, mimeType) {
-  const oauth2 = getOAuthClient(client);
-  const { token } = await oauth2.getAccessToken();
-
-  console.log(`[foto] Iniciando upload para ${locPath} (${Math.round(fileBuffer.length / 1024)}KB)`);
-
-  // Passo 1: iniciar upload resumável
-  const initRes = await fetch(
-    `https://mybusiness.googleapis.com/upload/v4/${locPath}/media?uploadType=resumable`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "X-Upload-Content-Type": mimeType,
-        "X-Upload-Content-Length": String(fileBuffer.length),
-      },
-      body: JSON.stringify({ mediaFormat: "PHOTO" }),
-    }
-  );
-
-  if (!initRes.ok) {
-    const errText = await initRes.text();
-    console.error(`[foto] Falha ao iniciar upload (${initRes.status}): ${errText}`);
-    throw new Error(`GMB media init ${initRes.status}: ${errText}`);
-  }
-
-  const uploadUrl = initRes.headers.get("location");
-  console.log(`[foto] URL de upload: ${uploadUrl ? "OK" : "NULA"}`);
-  if (!uploadUrl) throw new Error("Google não retornou URL de upload");
-
-  // Passo 2: enviar bytes
-  const uploadRes = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": mimeType },
-    body: fileBuffer,
-  });
-
-  if (!uploadRes.ok) {
-    const errText = await uploadRes.text();
-    console.error(`[foto] Falha no envio dos bytes (${uploadRes.status}): ${errText}`);
-    throw new Error(`GMB media upload ${uploadRes.status}: ${errText}`);
-  }
-
-  const mediaData = await uploadRes.json();
-  console.log(`[foto] Upload concluído — name: ${mediaData.name} | googleUrl: ${mediaData.googleUrl}`);
-
-  // Retorna o resource name para referenciar na criação do post
-  return mediaData.name || null;
-}
-
-async function publishPostToGMB(client, description, mediaName) {
+// A API GMB v4 só aceita fotos via sourceUrl (URL pública).
+// Upload direto de arquivo local não é suportado.
+async function publishPostToGMB(client, description, photoUrl) {
   const oauth2 = getOAuthClient(client);
   const { token } = await oauth2.getAccessToken();
   const locPath = locationPath(client);
 
   const body = { topicType: "STANDARD", summary: description };
-  if (mediaName) {
-    // Usa o resource name retornado pelo upload (ex: accounts/.../locations/.../media/KEY)
-    body.media = [{ mediaFormat: "PHOTO", name: mediaName }];
+  if (photoUrl) {
+    body.media = [{ mediaFormat: "PHOTO", sourceUrl: photoUrl }];
+    console.log(`[post] Incluindo foto: ${photoUrl.slice(0, 80)}…`);
   }
 
   const res = await fetch(
@@ -169,22 +120,17 @@ async function publishPostToGMB(client, description, mediaName) {
   return await res.json();
 }
 
-async function tryUploadPhoto(client, post) {
-  if (!post.photoFilename) return null;
-  const fullPath = path.join(uploadsDir, post.photoFilename);
-  if (!fs.existsSync(fullPath)) {
-    console.warn(`[foto] Arquivo não encontrado: ${post.photoFilename}`);
-    return null;
+// Retorna a URL pública da foto (campo photoUrl do post).
+// Arquivo local não é acessível pelo Google, então é ignorado.
+function tryUploadPhoto(_client, post) {
+  if (post.photoUrl) {
+    console.log(`[foto] Usando URL pública: ${post.photoUrl.slice(0, 80)}…`);
+    return Promise.resolve(post.photoUrl);
   }
-  try {
-    const buf     = fs.readFileSync(fullPath);
-    const locPath = locationPath(client);
-    const name    = await uploadImageToGMB(client, locPath, buf, post.mimeType || "image/jpeg");
-    return name;
-  } catch (e) {
-    console.warn(`[foto] Upload falhou: ${e.message}`);
-    return null;
+  if (post.photoFilename) {
+    console.warn(`[foto] Arquivo local ignorado (Google não acessa localhost). Publique sem foto.`);
   }
+  return Promise.resolve(null);
 }
 
 function resolveTokens(client, allClients) {
@@ -620,7 +566,7 @@ app.get("/posts/:clientId", async (req, res) => {
 // POST /posts/:clientId — criar/agendar post
 app.post("/posts/:clientId", upload.single("photo"), async (req, res) => {
   const { clientId } = req.params;
-  const { description, scheduledTime } = req.body;
+  const { description, scheduledTime, photoUrl } = req.body;
   const photoFile = req.file;
 
   if (!description?.trim()) {
@@ -645,6 +591,7 @@ app.post("/posts/:clientId", upload.single("photo"), async (req, res) => {
     clientId,
     description: description.trim(),
     photoFilename: photoFile ? photoFile.filename : null,
+    photoUrl: photoUrl || null,
     mimeType: photoFile ? photoFile.mimetype : null,
     scheduledTime: schedTime ? schedTime.toISOString() : null,
     status: "scheduled",
