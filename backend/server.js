@@ -94,6 +94,9 @@ async function uploadImageToGMB(client, locPath, fileBuffer, mimeType) {
   const oauth2 = getOAuthClient(client);
   const { token } = await oauth2.getAccessToken();
 
+  console.log(`[foto] Iniciando upload para ${locPath} (${Math.round(fileBuffer.length / 1024)}KB)`);
+
+  // Passo 1: iniciar upload resumável
   const initRes = await fetch(
     `https://mybusiness.googleapis.com/upload/v4/${locPath}/media?uploadType=resumable`,
     {
@@ -109,34 +112,44 @@ async function uploadImageToGMB(client, locPath, fileBuffer, mimeType) {
   );
 
   if (!initRes.ok) {
-    throw new Error(`GMB media init: ${await initRes.text()}`);
+    const errText = await initRes.text();
+    console.error(`[foto] Falha ao iniciar upload (${initRes.status}): ${errText}`);
+    throw new Error(`GMB media init ${initRes.status}: ${errText}`);
   }
 
   const uploadUrl = initRes.headers.get("location");
-  if (!uploadUrl) throw new Error("Sem URL de upload retornada pelo Google");
+  console.log(`[foto] URL de upload: ${uploadUrl ? "OK" : "NULA"}`);
+  if (!uploadUrl) throw new Error("Google não retornou URL de upload");
 
+  // Passo 2: enviar bytes
   const uploadRes = await fetch(uploadUrl, {
     method: "PUT",
-    headers: { "Content-Type": mimeType, "Content-Length": String(fileBuffer.length) },
+    headers: { "Content-Type": mimeType },
     body: fileBuffer,
   });
 
   if (!uploadRes.ok) {
-    throw new Error(`GMB media upload: ${await uploadRes.text()}`);
+    const errText = await uploadRes.text();
+    console.error(`[foto] Falha no envio dos bytes (${uploadRes.status}): ${errText}`);
+    throw new Error(`GMB media upload ${uploadRes.status}: ${errText}`);
   }
 
   const mediaData = await uploadRes.json();
-  return mediaData.googleUrl || null;
+  console.log(`[foto] Upload concluído — name: ${mediaData.name} | googleUrl: ${mediaData.googleUrl}`);
+
+  // Retorna o resource name para referenciar na criação do post
+  return mediaData.name || null;
 }
 
-async function publishPostToGMB(client, description, googlePhotoUrl) {
+async function publishPostToGMB(client, description, mediaName) {
   const oauth2 = getOAuthClient(client);
   const { token } = await oauth2.getAccessToken();
   const locPath = locationPath(client);
 
   const body = { topicType: "STANDARD", summary: description };
-  if (googlePhotoUrl) {
-    body.media = [{ mediaFormat: "PHOTO", googleUrl: googlePhotoUrl }];
+  if (mediaName) {
+    // Usa o resource name retornado pelo upload (ex: accounts/.../locations/.../media/KEY)
+    body.media = [{ mediaFormat: "PHOTO", name: mediaName }];
   }
 
   const res = await fetch(
@@ -148,20 +161,28 @@ async function publishPostToGMB(client, description, googlePhotoUrl) {
     }
   );
 
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error(`[post] Falha ao criar post (${res.status}): ${errText}`);
+    throw new Error(errText);
+  }
   return await res.json();
 }
 
 async function tryUploadPhoto(client, post) {
   if (!post.photoFilename) return null;
   const fullPath = path.join(uploadsDir, post.photoFilename);
-  if (!fs.existsSync(fullPath)) return null;
+  if (!fs.existsSync(fullPath)) {
+    console.warn(`[foto] Arquivo não encontrado: ${post.photoFilename}`);
+    return null;
+  }
   try {
-    const buf = fs.readFileSync(fullPath);
+    const buf     = fs.readFileSync(fullPath);
     const locPath = locationPath(client);
-    return await uploadImageToGMB(client, locPath, buf, post.mimeType);
+    const name    = await uploadImageToGMB(client, locPath, buf, post.mimeType || "image/jpeg");
+    return name;
   } catch (e) {
-    console.warn("Foto não enviada ao GMB:", e.message);
+    console.warn(`[foto] Upload falhou: ${e.message}`);
     return null;
   }
 }
