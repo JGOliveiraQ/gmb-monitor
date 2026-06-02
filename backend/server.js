@@ -912,8 +912,62 @@ app.post("/auto-reply-all", async (req, res) => {
   res.json({ success: true, totalReplied, totalFailed, results });
 });
 
+// ─── Agendador: publica posts quando chega a hora ────────────────────────────
+
+async function runScheduler() {
+  const db   = loadPosts();
+  const data = loadClients();
+  const now  = new Date();
+
+  const due = db.posts.filter(
+    (p) => p.status === "scheduled" && p.scheduledTime && new Date(p.scheduledTime) <= now
+  );
+
+  if (due.length === 0) return;
+
+  console.log(`[scheduler] ${due.length} post(s) vencido(s) — publicando…`);
+
+  for (const post of due) {
+    const client = data.clients.find((c) => c.id === post.clientId);
+    if (!client || !client.locationId) {
+      console.warn(`[scheduler] Cliente ${post.clientId} sem locationId — pulando`);
+      continue;
+    }
+
+    const hasTokens = resolveTokens(client, data.clients);
+    if (!hasTokens) {
+      console.warn(`[scheduler] Cliente ${post.clientId} sem tokens — pulando`);
+      continue;
+    }
+
+    try {
+      const googlePhotoUrl = await tryUploadPhoto(client, post);
+      const gmbPost        = await publishPostToGMB(client, post.description, googlePhotoUrl);
+
+      // Atualiza status no arquivo
+      const idx = db.posts.findIndex((p) => p.id === post.id);
+      if (idx !== -1) {
+        db.posts[idx].status      = "published";
+        db.posts[idx].gmbPostId   = gmbPost.name || null;
+        db.posts[idx].publishedAt = new Date().toISOString();
+      }
+
+      console.log(`[scheduler] ✅ Publicado: ${post.clientId} — ${post.description.slice(0, 50)}…`);
+    } catch (err) {
+      console.error(`[scheduler] ❌ Erro ao publicar ${post.id}:`, err.message);
+    }
+  }
+
+  savePosts(db);
+}
+
+// Roda imediatamente ao iniciar (pega qualquer post atrasado) e depois a cada 5 min
+runScheduler();
+setInterval(runScheduler, 5 * 60 * 1000);
+
 // ─── Servidor ────────────────────────────────────────────────────────────────
 
 app.listen(3000, () => {
   console.log("✅ Backend rodando em http://localhost:3000");
+  console.log("🕐 Agendador ativo — verifica posts a cada 5 minutos");
 });
