@@ -98,6 +98,15 @@ export default function Home() {
 
   const totalPending = accounts.reduce((sum, a) => sum + a.pending, 0);
 
+  // ── Agrupamento de clientes ─────────────────────────────────────────────────
+  const SAUDE_IDS = new Set([
+    "dr-othavio", "dr-igor", "clinica-pe-wagner", "orthocrin",
+    "dr-gil-galvao", "dr-jacques", "dr-pedro", "dr-diego", "dr-raphael",
+  ]);
+
+  const grupoSaude  = accounts.filter((a) => SAUDE_IDS.has(a.clientId));
+  const grupoOutros = accounts.filter((a) => !SAUDE_IDS.has(a.clientId));
+
   function openClient(clientId: string) {
     router.push(`/reviews/${clientId}?tab=${mode}`);
   }
@@ -184,17 +193,49 @@ export default function Home() {
       )}
 
       {!loading && accounts.length > 0 && (
-        <div className="clients-row">
-          {accounts.map((acc) => (
-            <ClientCard
-              key={acc.clientId}
-              acc={acc}
-              mode={mode}
-              coverage={getCoverage(acc.clientId)}
-              onClick={() => openClient(acc.clientId)}
-            />
-          ))}
-        </div>
+        <>
+          {grupoSaude.length > 0 && (
+            <section className="client-group">
+              <div className="client-group-header">
+                <span className="client-group-icon">🏥</span>
+                <span className="client-group-title">Área da Saúde</span>
+                <span className="client-group-count">{grupoSaude.length}</span>
+              </div>
+              <div className="clients-row">
+                {grupoSaude.map((acc) => (
+                  <ClientCard
+                    key={acc.clientId}
+                    acc={acc}
+                    mode={mode}
+                    coverage={getCoverage(acc.clientId)}
+                    onClick={() => openClient(acc.clientId)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {grupoOutros.length > 0 && (
+            <section className="client-group">
+              <div className="client-group-header">
+                <span className="client-group-icon">🏢</span>
+                <span className="client-group-title">Outros</span>
+                <span className="client-group-count">{grupoOutros.length}</span>
+              </div>
+              <div className="clients-row">
+                {grupoOutros.map((acc) => (
+                  <ClientCard
+                    key={acc.clientId}
+                    acc={acc}
+                    mode={mode}
+                    coverage={getCoverage(acc.clientId)}
+                    onClick={() => openClient(acc.clientId)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
       {/* Modal de resultado */}
       {autoResult && (
