@@ -100,7 +100,7 @@ export default function Home() {
 
   // ── Agrupamento de clientes ─────────────────────────────────────────────────
   const SAUDE_IDS = new Set([
-    "dr-othavio", "dr-igor", "clinica-pe-wagner", "orthocrin",
+    "dr-othavio", "dr-igor", "clinica-pe-wagner",
     "dr-gil-galvao", "dr-jacques", "dr-pedro", "dr-diego", "dr-raphael",
   ]);
 
