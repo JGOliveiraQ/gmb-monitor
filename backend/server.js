@@ -9,7 +9,10 @@ const crypto = require("crypto");
 
 const app = express();
 
-app.use(cors({ origin: "http://localhost:3001" }));
+app.use(cors({ origin: [
+  "http://localhost:3001",
+  `http://204.168.196.118:${process.env.FRONTEND_PORT || 3001}`,
+] }));
 app.use(express.json());
 
 // ─── Uploads ─────────────────────────────────────────────────────────────────
@@ -679,24 +682,27 @@ app.delete("/posts/:clientId/:postId", (req, res) => {
 
 // ─── Cobertura semanal de posts ───────────────────────────────────────────────
 
-// Retorna as próximas 4 semanas (seg–dom) a partir de hoje
 function getNextFourWeeks() {
+  return getWeeksRange(0, 3);
+}
+
+// Retorna semanas passadas e futuras. pastWeeks=2, futureWeeks=2 → [-2,-1,0,1,2]
+function getWeeksRange(pastWeeks = 0, futureWeeks = 3) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Recua até a segunda-feira da semana atual
   const dow = today.getDay();
   const monday = new Date(today);
   monday.setDate(monday.getDate() - (dow === 0 ? 6 : dow - 1));
 
   const weeks = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = -pastWeeks; i <= futureWeeks; i++) {
     const start = new Date(monday);
     start.setDate(start.getDate() + i * 7);
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
     end.setHours(23, 59, 59, 999);
-    weeks.push({ start, end });
+    weeks.push({ start, end, weekOffset: i, isPast: i < 0, isCurrent: i === 0 });
   }
   return weeks;
 }
@@ -769,6 +775,76 @@ app.get("/posts-coverage", async (req, res) => {
     .map((r) => r.value);
 
   res.json({ coverage });
+});
+
+// GET /posts-coverage-full?past=2&future=2 — cobre semanas passadas + futuras
+app.get("/posts-coverage-full", async (req, res) => {
+  const pastWeeks   = Math.min(parseInt(req.query.past   || "2", 10), 8);
+  const futureWeeks = Math.min(parseInt(req.query.future || "2", 10), 8);
+
+  const data      = loadClients();
+  const locations = data.clients.filter((c) => c.locationId);
+  const db        = loadPosts();
+  const weeks     = getWeeksRange(pastWeeks, futureWeeks);
+
+  const results = await Promise.allSettled(
+    locations.map(async (client) => {
+      const localPosts = db.posts.filter((p) => p.clientId === client.id);
+
+      let gmbPosts = [];
+      const hasTokens = resolveTokens(client, data.clients);
+      if (hasTokens && client.locationId) {
+        try {
+          const oauth2 = getOAuthClient(client);
+          const { token } = await oauth2.getAccessToken();
+          const locPath = locationPath(client);
+          const r = await fetch(
+            `https://mybusiness.googleapis.com/v4/${locPath}/localPosts?pageSize=50`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (r.ok) {
+            const d = await r.json();
+            gmbPosts = (d.localPosts || []).map((p) => ({
+              publishedAt: p.createTime || null,
+              scheduledTime: null,
+            }));
+          }
+        } catch { /* silencioso */ }
+      }
+
+      const allPosts = [...localPosts, ...gmbPosts];
+
+      const weekCoverage = weeks.map((week) => {
+        const hasPost = allPosts.some((p) => {
+          const dateStr = p.publishedAt || p.scheduledTime;
+          if (!dateStr) return false;
+          const d = new Date(dateStr);
+          return d >= week.start && d <= week.end;
+        });
+        return {
+          weekOffset: week.weekOffset,
+          weekStart:  week.start.toISOString(),
+          weekEnd:    week.end.toISOString(),
+          isPast:     week.isPast,
+          isCurrent:  week.isCurrent,
+          hasPost,
+        };
+      });
+
+      return {
+        clientId:     client.id,
+        clientName:   client.name,
+        weeks:        weekCoverage,
+        missingWeeks: weekCoverage.filter((w) => !w.hasPost).length,
+      };
+    })
+  );
+
+  const coverage = results
+    .filter((r) => r.status === "fulfilled")
+    .map((r) => r.value);
+
+  res.json({ coverage, totalClients: locations.length });
 });
 
 // ─── Auto-resposta: responde TODAS as avaliações pendentes de TODOS os clientes ──
@@ -935,7 +1011,8 @@ setInterval(runScheduler, 5 * 60 * 1000);
 
 // ─── Servidor ────────────────────────────────────────────────────────────────
 
-app.listen(3000, () => {
-  console.log("✅ Backend rodando em http://localhost:3000");
+const PORT = parseInt(process.env.PORT || "3000", 10);
+app.listen(PORT, () => {
+  console.log(`✅ Backend rodando em http://localhost:${PORT}`);
   console.log("🕐 Agendador ativo — verifica posts a cada 5 minutos");
 });

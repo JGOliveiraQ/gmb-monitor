@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+
 type Mode = "posts" | "reviews";
 
 interface Account {
@@ -56,8 +58,8 @@ export default function Home() {
   const refreshData = useCallback(() => {
     setLoading(true);
     Promise.allSettled([
-      fetch("http://localhost:3000/accounts-summary").then((r) => r.json()),
-      fetch("http://localhost:3000/posts-coverage").then((r) => r.json()),
+      fetch(`${API}/accounts-summary`).then((r) => r.json()),
+      fetch(`${API}/posts-coverage`).then((r) => r.json()),
     ]).then(([summaryResult, coverageResult]) => {
       if (summaryResult.status === "fulfilled") {
         setAccounts(summaryResult.value.accounts || []);
@@ -75,7 +77,7 @@ export default function Home() {
     setAutoReplying(true);
     setAutoResult(null);
     try {
-      const res  = await fetch("http://localhost:3000/auto-reply-all", { method: "POST" });
+      const res  = await fetch(`${API}/auto-reply-all`, { method: "POST" });
       const data: AutoReplyResult = await res.json();
       setAutoResult(data);
       // Atualiza contadores de pendentes

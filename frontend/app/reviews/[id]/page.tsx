@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface Review {
@@ -356,7 +358,7 @@ function PostForm({ clientId, existingPosts, onSuccess, onToast }: {
       if (photo) form.append("photo", photo);
       if (scheduleMode && scheduledDate) form.append("scheduledTime", scheduledDate.toISOString());
 
-      const res  = await fetch(`http://localhost:3000/posts/${clientId}`, { method: "POST", body: form });
+      const res  = await fetch(`${API}/posts/${clientId}`, { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao criar post");
 
@@ -452,7 +454,7 @@ function PostCard({ post, onPublish, onDelete }: {
 
   // Imagem: local (upload) ou URL do Google
   const imgSrc = post.photoFilename
-    ? `http://localhost:3000/uploads/${post.photoFilename}`
+    ? `${API}/uploads/${post.photoFilename}`
     : post.photoUrl ?? null;
 
   return (
@@ -488,7 +490,7 @@ function PostsTab({ clientId, onToast }: { clientId: string; onToast: (msg: stri
 
   const fetchPosts = useCallback(() => {
     setLoading(true);
-    fetch(`http://localhost:3000/posts/${clientId}`)
+    fetch(`${API}/posts/${clientId}`)
       .then((r) => r.json())
       .then((d) => { setPosts(d.posts || []); setLoading(false); })
       .catch(() => setLoading(false));
@@ -498,7 +500,7 @@ function PostsTab({ clientId, onToast }: { clientId: string; onToast: (msg: stri
 
   async function handlePublish(postId: string) {
     try {
-      const res  = await fetch(`http://localhost:3000/posts/${clientId}/${postId}/publish`, { method: "POST" });
+      const res  = await fetch(`${API}/posts/${clientId}/${postId}/publish`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao publicar");
       setPosts((prev) => prev.map((p) => (p.id === postId ? data.post : p)));
@@ -510,7 +512,7 @@ function PostsTab({ clientId, onToast }: { clientId: string; onToast: (msg: stri
 
   async function handleDelete(postId: string) {
     try {
-      const res = await fetch(`http://localhost:3000/posts/${clientId}/${postId}`, { method: "DELETE" });
+      const res = await fetch(`${API}/posts/${clientId}/${postId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Erro ao excluir");
       setPosts((prev) => prev.filter((p) => p.id !== postId));
       onToast("Post excluído.", "success");
@@ -569,7 +571,7 @@ function ReviewsTab({ clientId, onToast }: { clientId: string; onToast: (msg: st
 
   useEffect(() => {
     setLoading(true);
-    fetch(`http://localhost:3000/reviews/${clientId}`)
+    fetch(`${API}/reviews/${clientId}`)
       .then((r) => r.json())
       .then((data) => {
         setReviews((data.reviews || []).map((r: Review) => ({ ...r, draft: undefined, loadingDraft: false, published: r.replied })));
@@ -591,7 +593,7 @@ function ReviewsTab({ clientId, onToast }: { clientId: string; onToast: (msg: st
     if (!rev) return;
     patch(reviewId, { loadingDraft: true });
     try {
-      const res  = await fetch("http://localhost:3000/generate-response", {
+      const res  = await fetch(`${API}/generate-response`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviewerName: rev.reviewer.displayName, rating: STAR_MAP[rev.starRating] ?? 3 }),
       });
@@ -607,7 +609,7 @@ function ReviewsTab({ clientId, onToast }: { clientId: string; onToast: (msg: st
     if (!confirmTarget) return;
     setPublishing(true);
     try {
-      const res = await fetch("http://localhost:3000/reply-review", {
+      const res = await fetch(`${API}/reply-review`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clientId, reviewName: confirmTarget.reviewId, replyText: confirmTarget.draft }),
       });
@@ -737,7 +739,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
 
   useEffect(() => {
     if (!clientId) return;
-    fetch(`http://localhost:3000/reviews/${clientId}`)
+    fetch(`${API}/reviews/${clientId}`)
       .then((r) => r.json())
       .then((d) => setClientName(d.clientName || clientId))
       .catch(() => {});
