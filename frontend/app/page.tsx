@@ -327,7 +327,9 @@ function ClientCard({
 
       {mode === "posts" && coverage && (
         <div className="week-coverage">
-          <span className="week-coverage-label">Próximas 4 semanas</span>
+          <span className="week-coverage-label">
+            Semanas de {new Date().toLocaleDateString("pt-BR", { month: "long" })}
+          </span>
           <div className="week-dots">
             {coverage.weeks.map((w) => {
               const start = new Date(w.weekStart).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
